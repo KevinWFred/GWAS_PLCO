@@ -142,7 +142,9 @@ echo /data/BB_Bioinformatics/Kevin/GWAS_PLCO/data/GSA/batch3/European/merged_pro
 echo /data/BB_Bioinformatics/Kevin/GWAS_PLCO/data/GSA/batch4/European/merged_prostate >> ../result/prostate_merglist.txt
 
 plink --merge-list ../result/prostate_merglist.txt --geno 0.1 --hwe 0.000001 --make-bed --out ../result/prostate --memory 30000
-plink --bfile ../result/prostate --maf 0.01 --geno 0.05 --keep ../result/Prostate_plinksel6997sample.txt --make-bed --out ../result/prostatemaf01
+plink --bfile ../result/prostate --maf 0.01 --geno 0.05 --keep ../result/Prostate_plinksample.txt --make-bed --out ../result/prostatemaf01
+plink --bfile ../result/prostatemaf01 --recode A-transpose -out ../result/prostatemaf01
+gzip ../result/prostatemaf01.traw
 #generate PCs
 # First, we need to perform prunning
 plink \

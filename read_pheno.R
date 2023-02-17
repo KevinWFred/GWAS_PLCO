@@ -69,7 +69,13 @@ table(pheno$batch)
 table(pheno$status,pheno$batch)
 idx=match(pheno$plco_id,alldata$plco_id)
 table(alldata$mortality_exitstat[idx],alldata$pros_death_stat[idx])
-
+table(pheno$status,pheno$pros_death_stat)
+#count all death events
+pheno$status1=1
+pheno$status1[which(pheno$pros_death_stat %in% c(1,2))]=2
+table(pheno$status1)
+save(pheno,file="../result/pheno.RData")
+write.table(data.frame(FID=pheno$plco_id,IID=pheno$plco_id),file="../result/Prostate_plinksample.txt",row.names = F,col.names = F,sep="\t",quote=F)
 #check covariates
 library("survival")
 library("survminer")
@@ -87,24 +93,32 @@ idx=!is.na(pheno$primary_trtp)
 fita=coxph(Surv(time, status) ~ agelevel, data = pheno[idx,])
 fitb=coxph(Surv(time, status) ~ agelevel+primary_trtp, data = pheno[idx,])
 anova(fita,fitb,test = "Chisq")
+
+#PCA plots
 pcadat=read.table("../result/prostate.eigenvec")
-
-idx=match(nooldphenosamples,pcadat$V1)
-pcadat$col="green"
-pcadat$col[idx]="red"
-library(scales)
-
-png(filename = "../result/PC12.png", width = 8, height = 8, units = "in",res=300)
-plot(pcadat$V3,pcadat$V4,xlab="PC1",ylab="PC2",col=alpha(pcadat$col,0.9),cex.axis=1.3,cex.lab=1.3)
-points(pcadat$V3[idx],pcadat$V4[idx],col="red")
-legend("bottomleft",legend = c("included","not included"),col=c("green","red"),pch=1,cex=1.2)
-dev.off()
-png(filename = "../result/PC13.png", width = 8, height = 8, units = "in",res=300)
-plot(pcadat$V3,pcadat$V5,xlab="PC1",ylab="PC3",col=alpha(pcadat$col,0.9),cex.axis=1.3,cex.lab=1.3)
-points(pcadat$V3[idx],pcadat$V5[idx],col="red")
-legend("bottomleft",legend = c("included","not included"),col=c("green","red"),pch=1,cex=1.2)
-dev.off()
-png(filename = "../result/PCAeigenvalue.png", width = 8, height = 8, units = "in",res=300)
-tmp=read.table("../result/prostate.eigenval")
-plot(tmp$V1,ylab="Eigen value",xlab="PCs",cex.axis=1.3,cex.lab=1.3)
-dev.off()
+rownames(pcadat)=pcadat$V1
+idx=match(pheno$plco_id,pcadat$V1)
+pcadat1=pcadat[idx,3:ncol(pcadat)]
+colnames(pcadat1)=paste0("PC",1:20)
+pheno=cbind(pheno,pcadat1)
+save(pheno,file="../result/pheno.RData")
+tmp=cor(as.matrix(oldpheno[,12:21]),as.matrix(pcadat1[,1:10]))
+# idx=match(nooldphenosamples,pcadat$V1)
+# pcadat$col="green"
+# pcadat$col[idx]="red"
+# library(scales)
+# 
+# png(filename = "../result/PC12.png", width = 8, height = 8, units = "in",res=300)
+# plot(pcadat$V3,pcadat$V4,xlab="PC1",ylab="PC2",col=alpha(pcadat$col,0.9),cex.axis=1.3,cex.lab=1.3)
+# points(pcadat$V3[idx],pcadat$V4[idx],col="red")
+# legend("bottomleft",legend = c("included","not included"),col=c("green","red"),pch=1,cex=1.2)
+# dev.off()
+# png(filename = "../result/PC13.png", width = 8, height = 8, units = "in",res=300)
+# plot(pcadat$V3,pcadat$V5,xlab="PC1",ylab="PC3",col=alpha(pcadat$col,0.9),cex.axis=1.3,cex.lab=1.3)
+# points(pcadat$V3[idx],pcadat$V5[idx],col="red")
+# legend("bottomleft",legend = c("included","not included"),col=c("green","red"),pch=1,cex=1.2)
+# dev.off()
+# png(filename = "../result/PCAeigenvalue.png", width = 8, height = 8, units = "in",res=300)
+# tmp=read.table("../result/prostate.eigenval")
+# plot(tmp$V1,ylab="Eigen value",xlab="PCs",cex.axis=1.3,cex.lab=1.3)
+# dev.off()
