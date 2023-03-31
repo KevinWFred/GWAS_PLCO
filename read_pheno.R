@@ -29,8 +29,22 @@ table(alldata$pros_death_stat,alldata$is_dead)
 pros_samples=alldata$plco_id[which(alldata$j_pros_cancer_first==1 & alldata$j_ph_any_trial==0 & alldata$mortality_exitdays > alldata$j_pros_cancer_diagdays)]
 pros_samples=intersect(pros_samples,allfam$V1)
 
+peidat=read.csv("../data/pros_data_7parts.csv")
+plcofam=read.table("/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/plcomaf01.fam",sep=" ")
+tmp=unlist(strsplit(plcofam$V2,"_"))
+plcofam$V2=tmp[seq(1,length(tmp),2)]
+sum(peidat$plco_id %in% plcofam$V2)
+write.table(plcofam,file="/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/plcomaf01.fam",sep=" ",col.names=F,row.names=F,quote=F)
+tmp=data.frame(FID=0,IID=peidat$plco_id)
+write.table(tmp,file="/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/pei.sample",sep=" ",col.names=F,row.names=F,quote=F)
+tmp=data.frame(sample=paste0(peidat$plco_id,"_",peidat$plco_id))
+write.table(tmp,file="/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/pei_plink2.sample",sep=" ",col.names=F,row.names=F,quote=F)
+
+sum(alldata$plco_id %in% peidat$plco_id)
+tmp=intersect(alldata$plco_id,peidat$plco_id)
+
 pheno=alldata[,c("plco_id", "pros_death_stat", "j_ph_any_trial","j_pros_cancer_first","agelevel","center", "primary_trtp", "dth_days",
-                 "mortality_exitdays", "j_pros_cancer_diagdays","j_dx_psa","j_dx_psa_gap")]
+                 "mortality_exitdays", "j_pros_cancer_diagdays","j_dx_psa","j_dx_psa_gap","race7")]
 pheno=pheno %>%
   mutate(status=ifelse(pros_death_stat %in% c(0,2),1,2))
 pheno$time=pheno$mortality_exitdays-pheno$j_pros_cancer_diagdays
@@ -41,12 +55,13 @@ notincluded=pheno[!pheno$plco_id %in% oldpheno$plco_id,] #10, they all have time
 
 #j_dx_psa: PSA Closest To Diagnosis (ng/mL)
 pheno=alldata[,c("plco_id", "pros_death_stat", "j_ph_any_trial","j_pros_cancer_first","agelevel","center", "primary_trtp", "dth_days",
-                 "mortality_exitstat","mortality_exitdays", "j_pros_cancer_diagdays","j_dx_psa","j_dx_psa_gap")]
+                 "mortality_exitstat","mortality_exitdays", "j_pros_cancer_diagdays","j_dx_psa","j_dx_psa_gap","race7")]
 pheno=pheno %>%
   mutate(status=ifelse(pros_death_stat %in% c(0,2),1,2)) #1 died of prostate
 pheno$time=pheno$mortality_exitdays-pheno$j_pros_cancer_diagdays
 pheno=pheno[pheno$plco_id %in% pros_samples,]
 pheno$batch=allfam$platform[match(pheno$plco_id,allfam$V1)]
+pheno$batch=as.factor(pheno$batch)
 pheno$psa_grp=cut(pheno$j_dx_psa,breaks=c(0,4,10,20,100000),labels=c("1: 0-3.9","2: 4-9.9","3: 10-19.9","4: 20+"),include.lowest = T,right=F)
 table(pheno$pros_death_stat,pheno$mortality_exitstat)
 pheno$agelevel=factor(pheno$agelevel,labels=c("0_59","60_64","65_69","GE70"))
@@ -94,6 +109,9 @@ fita=coxph(Surv(time, status) ~ agelevel, data = pheno[idx,])
 fitb=coxph(Surv(time, status) ~ agelevel+primary_trtp, data = pheno[idx,])
 anova(fita,fitb,test = "Chisq")
 
+fit=coxph(Surv(time, status) ~ psa_grp+agelevel+primary_trtp+batch+center+PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10, data =pheno)
+summary(fit)
+
 #PCA plots
 pcadat=read.table("../result/prostate.eigenvec")
 rownames(pcadat)=pcadat$V1
@@ -122,3 +140,44 @@ tmp=cor(as.matrix(oldpheno[,12:21]),as.matrix(pcadat1[,1:10]))
 # tmp=read.table("../result/prostate.eigenval")
 # plot(tmp$V1,ylab="Eigen value",xlab="PCs",cex.axis=1.3,cex.lab=1.3)
 # dev.off()
+
+pcadat=read.table("/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/peiplco.eigenvec")
+colnames(pcadat)[3:22]=paste0("PC",1:20)
+png(filename="../result/peiplco_pca.png",res=100)
+plot(pcadat[, c("PC1", "PC2", "PC3", "PC4", "PC5")])
+dev.off()
+pcabim=read.table("/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/peiplco.bim")
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(SNPlocs.Hsapiens.dbSNP155.GRCh38)
+
+## this step is optional!
+## here we just simplify the names of the objects, making the code neater
+genome <- BSgenome.Hsapiens.UCSC.hg38
+all_snps <- SNPlocs.Hsapiens.dbSNP155.GRCh38
+
+## By default the genome we're using follows the UCSC convention for
+## naming chromosome e.g. "chr8".  This step changes that to match our
+## SNP data which uses NCBI naming e.g. "8"
+seqlevelsStyle(genome) <- "NCBI"
+
+## construct a GPos object containing all the positions we're interested in
+positions <- GPos(seqnames = pcabim$V1, pos =pcabim$V4)
+
+## query the genome with out positions
+my_snps <- snpsByOverlaps(all_snps, positions, genome = genome)
+
+## this gives us a GPos object
+my_snps = as.data.frame(my_snps)
+tmp1=paste0(pcabim$V1,"_",pcabim$V4)
+tmp2=paste0(my_snps$seqnames,"_",my_snps$pos)
+tmp3=intersect(tmp1,tmp2)
+idx1 = match(tmp3,tmp1)
+idx2=match(tmp3,tmp2)
+
+pcabim$V2[idx1]=my_snps$RefSNP_id[idx2]
+write.table(pcabim,file="/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/peiplco.bim",sep=" ",row.names=F,col.names=F,quote=F)
+
+
+# #process LeiPLCO data
+# tmp=read.table("/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/plcomaf01.pvar")
+# write.table(tmp$V3,file="/data/DCEGLeiSongData/Kevin/GWAS_PLCO/result/plcoma01_bivariate.snp",row.names = F,col.names = F,quote=F)

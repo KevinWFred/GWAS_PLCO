@@ -17,8 +17,9 @@ gwas_surv<- function(snp.traw.file = "/data/BB_Bioinformatics/Kevin/GWAS_PLCO/re
   print(out.file)
   print(opt)
   #phenotype data
-  load("../result/pheno.RData")
-  geno=fread(snp.traw.file)
+  load("../result/pheno_old10pc.RData")
+  
+  geno=as.data.frame(fread(snp.traw.file))
   #geno=fread("../result/prostatemaf01.traw.gz",nrows = 10)
   rownames(geno)=geno$SNP
   geno=geno[,7:ncol(geno)]  
@@ -34,7 +35,7 @@ gwas_surv<- function(snp.traw.file = "/data/BB_Bioinformatics/Kevin/GWAS_PLCO/re
     {
       m1 = tryCatch(
         expr = {
-          coxph(Surv(time, status) ~ snp+psa_grp+agelevel+primary_trtp+PC1+PC2+PC3+PC4+PC5, data = dat)
+          coxph(Surv(time, status) ~ snp+psa_grp+agelevel+primary_trtp+batch+center+PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10, data = dat)
         },
         error = function(e){ 
           return(NULL)
@@ -44,7 +45,7 @@ gwas_surv<- function(snp.traw.file = "/data/BB_Bioinformatics/Kevin/GWAS_PLCO/re
     {
       m1 = tryCatch(
         expr = {
-          coxph(Surv(time, status1) ~ snp+psa_grp+agelevel+primary_trtp+PC1+PC2+PC3+PC4+PC5, data = dat)
+          coxph(Surv(time, status1) ~ snp+psa_grp+agelevel+primary_trtp+batch+center+PC1+PC2+PC3+PC4+PC5+PC6+PC7+PC8+PC9+PC10, data = dat)
         },
         error = function(e){ 
           return(NULL)

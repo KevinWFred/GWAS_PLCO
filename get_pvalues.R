@@ -44,9 +44,11 @@ qqplot=function(pvalue=NULL,main="",xlim=NULL,ylim=NULL,title="")
 png("../result/prostate_qqplot.png",res=100)
 qqplot(res$P,title="Prostate cancer death")
 dev.off()
-res[which(res$P<5e-8)]
-qqplot(res_alldeath$P,title="")
-
+res[which(res$P<5e-8),]
+png("../result/alldeath_qqplot.png",res=100)
+qqplot(res_alldeath$P,title="All death")
+dev.off()
+res_alldeath[which(res_alldeath$P<5e-8),]
 
 plot(-log10(res_alldeath$P),-log10(res$P),xlab="All death -log10(P)",ylab="Prostate cancer death -log10(P)",cex.lab=1.2,cex.axis=1.2)
 plot(res_alldeath$Beta,res$Beta,xlab="All death effect size",ylab="Prostate cancer death effect size", cex.lab=1.2,cex.axis=1.2)
